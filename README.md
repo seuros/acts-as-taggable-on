@@ -21,7 +21,7 @@ Versions 2.x are compatible with Ruby 1.8.7+ and Rails 3.
 
 Versions 2.4.1 and up are compatible with Rails 4 too (thanks to arabonradar and cwoodcox).
 
-Versions 3.x (currently unreleased) are compatible with Ruby 1.9.3+ and Rails 3 and 4.  There is a [release candidate you may try](http://rubygems.org/gems/acts_as_taggable_on).
+Versions >= 3.x are compatible with Ruby 1.9.3+ and Rails 3 and 4.
 
 For an up-to-date roadmap, see https://github.com/mbleigh/acts-as-taggable-on/issues/milestones
 
@@ -35,48 +35,100 @@ gem 'acts-as-taggable-on'
 
 and bundle:
 
-```ruby
+```shell
 bundle
 ```
 
 #### Post Installation
 
-```shell
-# For the latest versions
-rake railties:install:migrations FROM=acts_as_taggable_on_engine db:migrate
+Install migrations
 
-# For versions 2.4.1 and earlier
+```shell
+# For the latest versions :
+rake acts_as_taggable_on_engine:install:migrations
+# For versions 2.4.1 and earlier :
 rails generate acts_as_taggable_on:migration
+```
+
+Review the generated migrations then migrate :
+```shell
 rake db:migrate
 ```
 
 #### Upgrading
 
-see [UPGRADING](UPGRADING)
+see [UPGRADING](UPGRADING.md)
 
 ## Usage
 
+Setup
+
 ```ruby
 class User < ActiveRecord::Base
-  # Alias for acts_as_taggable_on :tags
-  acts_as_taggable
+  acts_as_taggable # Alias for acts_as_taggable_on :tags
   acts_as_taggable_on :skills, :interests
 end
 
 @user = User.new(:name => "Bobby")
-@user.tag_list = "awesome, slick, hefty"      # this should be familiar
-@user.skill_list = "joking, clowning, boxing" # but you can do it for any context!
+```
 
-@user.tags                                    # => [<Tag name:"awesome">,<Tag name:"slick">,<Tag name:"hefty">]
-@user.skills                                  # => [<Tag name:"joking">,<Tag name:"clowning">,<Tag name:"boxing">]
-@user.skill_list                              # => ["joking","clowning","boxing"] as TagList
+Add and remove a single tag
 
-@user.tag_list.remove("awesome")              # remove a single tag
-@user.tag_list.remove("awesome, slick")       # works with arrays too
-@user.tag_list.add("awesomer")                # add a single tag. alias for <<
-@user.tag_list.add("awesomer, slicker")       # also works with arrays
+```ruby
+@user.tag_list.add("awesomer")   # add a single tag. alias for <<
+@user.tag_list.remove("awesome") # remove a single tag
+```
 
-User.skill_counts                             # => [<Tag name="joking" count=2>,<Tag name="clowning" count=1>...]
+Add and remove multiple tags in an array
+
+```ruby
+@user.tag_list.add("awesomer", "slicker")
+@user.tag_list.remove("awesome", "slick")
+```
+
+You can also add and remove tags in format of String. This would
+be convenient in some cases such as handling tag input param in a String.
+
+Pay attention you need to add `parse: true` as option in this case.
+
+You may also want to take a look at delimiter in the string. The default
+is comma `,` so you don't need to do anything here. However, if you made
+a change on delimiter setting, make sure the string will match. See
+[configuration](#configuration) for more about delimiter.
+
+```ruby
+@user.tag_list.add("awesomer, slicker", parse: true)
+@user.tag_list.remove("awesome, slick", parse: true)
+```
+
+You can also add and remove tags by direct assignment. Note this will
+remove existing tags so use it with attention.
+
+```ruby
+@user.tag_list = "awesome, slick, hefty"
+@user.tags
+# => [<Tag name:"awesome">,<Tag name:"slick">,<Tag name:"hefty">]
+```
+
+With the defined context in model, you have multiple new methods at disposal
+to manage and view the tags in the context. For example, with `:skill` context
+these methods are added to the model: `skill_list`(and `skill_list.add`, `skill_list.remove`
+`skill_list=`), `skills`(plural), skill_counts
+
+
+```ruby
+@user.skill_list = "joking, clowning, boxing"
+
+@user.skills
+# => [<Tag name:"joking">,<Tag name:"clowning">,<Tag name:"boxing">]
+
+@user.skill_list.add("coding")
+
+@user.skill_list
+# => ["joking","clowning","boxing", "coding"]
+
+User.skill_counts
+# => [<Tag name="joking" count=2>,<Tag name="clowning" count=1>...]
 ```
 
 To preserve the order in which tags are created use `acts_as_ordered_taggable`:
@@ -128,7 +180,7 @@ User.tagged_with(['awesome, cool'], :on => :tags, :any => true).tagged_with(['sm
 
 You can also use `:wild => true` option along with `:any` or `:exclude` option. It will looking for `%awesome%` and `%cool%` in sql.
 
-__Tip:__ `User.tagged_with([])` or '' will return `[]`, but not all records.
+__Tip:__ `User.tagged_with([])` or `User.tagged_with('')` will return `[]`, but not all records.
 
 ### Relationships
 

@@ -1,7 +1,7 @@
 # coding: utf-8
 module ActsAsTaggableOn
   class Tag < ::ActiveRecord::Base
-    include ActsAsTaggableOn::Utils
+    extend ActsAsTaggableOn::Utils
 
     attr_accessible :name if defined?(ActiveModel::MassAssignmentSecurity)
 
@@ -100,7 +100,11 @@ module ActsAsTaggableOn
       private
 
       def comparable_name(str)
-        as_8bit_ascii(str).downcase
+        if ActsAsTaggableOn.strict_case_match
+          as_8bit_ascii(str)
+        else
+          as_8bit_ascii(str).downcase
+        end
       end
 
       def binary
@@ -109,7 +113,7 @@ module ActsAsTaggableOn
 
       def as_8bit_ascii(string)
         if defined?(Encoding)
-          string.to_s.force_encoding('BINARY')
+          string.to_s.dup.force_encoding('BINARY')
         else
           string.to_s.mb_chars
         end

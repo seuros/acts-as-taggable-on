@@ -216,6 +216,13 @@ describe "Taggable" do
     TaggableModel.tagged_with("ruby").first.should == @taggable
   end
 
+  it "should be able to get a count with find by tag when using a group by" do
+    @taggable.skill_list = "ruby"
+    @taggable.save
+
+    expect(TaggableModel.tagged_with("ruby").group(:created_at).count.count).to eq(1)
+  end
+
   it "should be able to find by tag with context" do
     @taggable.skill_list = "ruby, rails, css"
     @taggable.tag_list = "bob, charlie"
@@ -367,6 +374,18 @@ describe "Taggable" do
     TaggableModel.tagged_with(["ruby", "java"], :order => 'taggable_models.name', :any => true).to_a.should == [bob, frank, steve]
     TaggableModel.tagged_with(["c++", "fitter"], :order => 'taggable_models.name', :any => true).to_a.should == [bob, steve]
     TaggableModel.tagged_with(["depressed", "css"], :order => 'taggable_models.name', :any => true).to_a.should == [bob, frank]
+  end
+
+  it "should be able to order by number of matching tags when matching any" do
+    bob = TaggableModel.create(:name => "Bob", :tag_list => "fitter, happier, more productive", :skill_list => "ruby, rails, css")
+    frank = TaggableModel.create(:name => "Frank", :tag_list => "weaker, depressed, inefficient", :skill_list => "ruby, rails, css")
+    steve = TaggableModel.create(:name => 'Steve', :tag_list => 'fitter, happier, more productive', :skill_list => 'c++, java, ruby')
+
+    TaggableModel.tagged_with(["ruby", "java"], :any => true, :order_by_matching_tag_count => true, :order => 'taggable_models.name').to_a.should == [steve, bob, frank]
+    TaggableModel.tagged_with(["c++", "fitter"], :any => true, :order_by_matching_tag_count => true, :order => 'taggable_models.name').to_a.should == [steve, bob]
+    TaggableModel.tagged_with(["depressed", "css"], :any => true, :order_by_matching_tag_count => true, :order => 'taggable_models.name').to_a.should == [frank, bob]
+    TaggableModel.tagged_with(["fitter", "happier", "more productive", "c++", "java", "ruby"], :any => true, :order_by_matching_tag_count => true, :order => 'taggable_models.name').to_a.should == [steve, bob, frank]
+    TaggableModel.tagged_with(["c++", "java", "ruby", "fitter"], :any => true, :order_by_matching_tag_count => true, :order => 'taggable_models.name').to_a.should == [steve, bob, frank]
   end
 
   context "wild: true" do
@@ -561,6 +580,22 @@ describe "Taggable" do
 
         it 'does not show any changes to the taggable item' do
           @taggable.changes.should == {}
+        end
+
+        context "and using a delimiter different from a ','" do
+          before do
+            @old_delimiter = ActsAsTaggableOn.delimiter
+            ActsAsTaggableOn.delimiter = ';'
+          end
+
+          after do
+            ActsAsTaggableOn.delimiter = @old_delimiter
+          end
+
+          it 'does not show any changes to the taggable item when using array assignments' do
+            @taggable.tag_list = ["awesome", "epic"]
+            @taggable.changes.should == {}
+          end
         end
       end
     end

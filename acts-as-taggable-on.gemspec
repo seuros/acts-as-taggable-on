@@ -18,11 +18,13 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.require_paths = ["lib"]
 
-  if File.exists?('UPGRADING')
-    gem.post_install_message = File.read('UPGRADING')
+  if File.exists?('UPGRADING.md')
+    gem.post_install_message = File.read('UPGRADING.md')
   end
 
-  gem.add_runtime_dependency 'rails', ['>= 3', '< 5']
+  gem.add_runtime_dependency 'activerecord',  ['>= 3', '< 5']
+  gem.add_runtime_dependency 'activesupport', ['>= 3', '< 5']
+  gem.add_runtime_dependency 'actionpack',    ['>= 3', '< 5']
 
   gem.add_development_dependency 'sqlite3'
   gem.add_development_dependency 'mysql2', '~> 0.3.7'
