@@ -22,10 +22,49 @@ module ActsAsTaggableOn
 
         # Parse the quoted tags
         d = ActsAsTaggableOn.delimiter
-        d = d.join("|") if d.kind_of?(Array) 
-        string.gsub!(/(\A|#{d})\s*"(.*?)"\s*(#{d}\s*|\z)/) { tag_list << $2; $3 }
-        string.gsub!(/(\A|#{d})\s*'(.*?)'\s*(#{d}\s*|\z)/) { tag_list << $2; $3 }
+        # Separate multiple delimiters by bitwise operator
+        d = d.join("|") if d.kind_of?(Array)
+        double_quote_pattern = %r{
+          (             # Tag start delimiter ($1)
+            \A       |  # Either string start or
+            #{d}        # a delimiter
+          )
+          \s*"          # quote (") optionally preceded by whitespace
+          (.*?)         # Tag ($2)
+          "\s*          # quote (") optionally followed by whitespace
+          (?=           # Tag end delimiter (not consumed; is zero-length lookahead)
+            #{d}\s*  |  # Either a delimiter optionally followed by whitespace or
+            \z          # string end
+          )
+        }x
+        string.gsub!(double_quote_pattern) {
+          # Append the matched tag to the tag list
+          tag_list << $2
+          # Return the matched delimiter ($3) to replace the matched items
+          ''
+        }
+        single_quote_pattern = %r{
+          (             # Tag start delimiter ($1)
+            \A       |  # Either string start or
+            #{d}        # a delimiter
+          )
+          \s*'          # quote (') optionally preceded by whitespace
+          (.*?)         # Tag ($2)
+          '\s*          # quote (') optionally followed by whitespace
+          (?=           # Tag end delimiter (not consumed; is zero-length lookahead)
+            #{d}\s*  |  # Either a delimiter optionally followed by whitespace or
+            \z          # string end
+          )
+        }x
+        string.gsub!(single_quote_pattern) {
+          # Append the matched tag ($2) to the tag list
+          tag_list << $2
+          # Return an empty string to replace the matched items
+          ''
+        }
 
+        # split the string by the delimiter
+        # and add to the tag_list
         tag_list.add(string.split(Regexp.new d))
       end
     end

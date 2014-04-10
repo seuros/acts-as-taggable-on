@@ -24,9 +24,9 @@ module ActsAsTaggableOn
 
     def self.named(name)
       if ActsAsTaggableOn.strict_case_match
-        where(["name = #{binary}?", name])
+        where(["name = #{binary}?", as_8bit_ascii(name)])
       else
-        where(["lower(name) = ?", name.downcase])
+        where(["LOWER(name) = LOWER(?)", as_8bit_ascii(unicode_downcase(name))])
       end
     end
 
@@ -38,8 +38,7 @@ module ActsAsTaggableOn
         where(clause)
       else
         clause = list.map { |tag|
-          lowercase_ascii_tag = as_8bit_ascii(tag).downcase
-          sanitize_sql(["lower(name) = ?", lowercase_ascii_tag])
+          sanitize_sql(["LOWER(name) = LOWER(?)", as_8bit_ascii(unicode_downcase(tag))])
         }.join(" OR ")
         where(clause)
       end
@@ -77,8 +76,14 @@ module ActsAsTaggableOn
       list.map do |tag_name|
         comparable_tag_name = comparable_name(tag_name)
         existing_tag = existing_tags.detect { |tag| comparable_name(tag.name) == comparable_tag_name }
-
-        existing_tag || Tag.create(:name => tag_name)
+        begin
+          existing_tag || Tag.create(:name => tag_name)
+        rescue ActiveRecord::RecordNotUnique
+          # Postgres aborts the current transaction with
+          # PG::InFailedSqlTransaction: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+          # so we have to rollback this transaction
+          raise DuplicateTagError.new("'#{tag_name}' has already been taken")
+        end
       end
     end
 
@@ -101,14 +106,22 @@ module ActsAsTaggableOn
 
       def comparable_name(str)
         if ActsAsTaggableOn.strict_case_match
-          as_8bit_ascii(str)
+          str
         else
-          as_8bit_ascii(str).downcase
+          unicode_downcase(str.to_s)
         end
       end
 
       def binary
-        /mysql/ === ActiveRecord::Base.connection_config[:adapter] ? "BINARY " : nil
+        using_mysql? ? "BINARY " : nil
+      end
+
+      def unicode_downcase(string)
+        if ActiveSupport::Multibyte::Unicode.respond_to?(:downcase)
+          ActiveSupport::Multibyte::Unicode.downcase(string)
+        else
+          ActiveSupport::Multibyte::Chars.new(string).downcase.to_s
+        end
       end
 
       def as_8bit_ascii(string)

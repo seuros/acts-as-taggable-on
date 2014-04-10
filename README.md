@@ -1,6 +1,7 @@
 # ActsAsTaggableOn
 [![Build Status](https://secure.travis-ci.org/mbleigh/acts-as-taggable-on.png)](http://travis-ci.org/mbleigh/acts-as-taggable-on)
 [![Code Climate](https://codeclimate.com/github/mbleigh/acts-as-taggable-on.png)](https://codeclimate.com/github/mbleigh/acts-as-taggable-on)
+[![Inline docs](http://inch-pages.github.io/github/mbleigh/acts-as-taggable-on.png)](http://inch-pages.github.io/github/mbleigh/acts-as-taggable-on)
 
 This plugin was originally based on Acts as Taggable on Steroids by Jonathan Viney.
 It has evolved substantially since that point, but all credit goes to him for the
@@ -175,7 +176,7 @@ User.tagged_with(["awesome", "cool"], :any => true)
 User.tagged_with(["awesome", "cool"], :exclude => true)
 
 # Find a user with any of tags based on context:
-User.tagged_with(['awesome, cool'], :on => :tags, :any => true).tagged_with(['smart', 'shy'], :on => :skills, :any => true)
+User.tagged_with(['awesome', 'cool'], :on => :tags, :any => true).tagged_with(['smart', 'shy'], :on => :skills, :any => true)
 ```
 
 You can also use `:wild => true` option along with `:any` or `:exclude` option. It will looking for `%awesome%` and `%cool%` in sql.
@@ -338,6 +339,8 @@ If you want to change the default delimiter (it defaults to ','). You can also p
 ```ruby
 ActsAsTaggableOn.delimiter = ','
 ```
+
+*NOTE: SQLite by default can't upcase or downcase multibyte characters, resulting in unwanted behavior. Load the SQLite ICU extension for proper handle of such characters. [See docs](http://www.sqlite.org/src/artifact?ci=trunk&filename=ext/icu/README.txt)*
 
 ## Contributors
 

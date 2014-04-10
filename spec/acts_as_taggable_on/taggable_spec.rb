@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'spec_helper'
 
 describe "Taggable To Preserve Order" do
@@ -242,6 +243,34 @@ describe "Taggable" do
     TaggableModel.tagged_with("ruby").to_a.should == TaggableModel.tagged_with("Ruby").to_a
   end
 
+  unless ActsAsTaggableOn::Tag.using_sqlite?
+    it "should not care about case for unicode names" do
+      ActsAsTaggableOn.strict_case_match = false
+
+      anya = TaggableModel.create(:name => "Anya", :tag_list => "ПРИВЕТ")
+      igor = TaggableModel.create(:name => "Igor", :tag_list => "привет")
+      katia = TaggableModel.create(:name => "Katia", :tag_list => "ПРИВЕТ")
+
+      ActsAsTaggableOn::Tag.all.size.should == 1
+      TaggableModel.tagged_with("привет").to_a.should == TaggableModel.tagged_with("ПРИВЕТ").to_a
+    end
+  end
+
+  it "should be able to create and find tags in languages without capitalization" do
+    ActsAsTaggableOn.strict_case_match = false
+    chihiro = TaggableModel.create(:name => "Chihiro", :tag_list => "日本の")
+    salim = TaggableModel.create(:name => "Salim", :tag_list => "עברית")
+    ieie = TaggableModel.create(:name => "Ieie", :tag_list => "中国的")
+    yasser = TaggableModel.create(:name => "Yasser", :tag_list => "العربية")
+    emo = TaggableModel.create(:name => "Emo", :tag_list => "✏")
+
+    TaggableModel.tagged_with("日本の").to_a.size.should == 1
+    TaggableModel.tagged_with("עברית").to_a.size.should == 1
+    TaggableModel.tagged_with("中国的").to_a.size.should == 1
+    TaggableModel.tagged_with("العربية").to_a.size.should == 1
+    TaggableModel.tagged_with("✏").to_a.size.should == 1
+  end
+
   it "should be able to get tag counts on model as a whole" do
     bob = TaggableModel.create(:name => "Bob", :tag_list => "ruby, rails, css")
     frank = TaggableModel.create(:name => "Frank", :tag_list => "ruby, rails")
@@ -430,6 +459,14 @@ describe "Taggable" do
     TaggableModel.tagged_with("fitter, happier", :match_all => true).to_a.should == [steve]
   end
 
+  it "should be able to find tagged with only the matching tags for a context" do
+    bob = TaggableModel.create(:name => "Bob", :tag_list => "lazy, happier", :skill_list => "ruby, rails, css")
+    frank = TaggableModel.create(:name => "Frank", :tag_list => "fitter, happier, inefficient", :skill_list => "css")
+    steve = TaggableModel.create(:name => 'Steve', :tag_list => "fitter, happier", :skill_list => "ruby, rails, css")
+
+    TaggableModel.tagged_with("css", :on => :skills, :match_all => true).to_a.should == [frank]
+  end
+
   it "should be able to find tagged with some excluded tags" do
     bob = TaggableModel.create(:name => "Bob", :tag_list => "happier, lazy")
     frank = TaggableModel.create(:name => "Frank", :tag_list => "happier")
@@ -445,13 +482,38 @@ describe "Taggable" do
     TaggableModel.tagged_with([]).should == []
   end
 
-  it "should not create duplicate taggings" do
-    bob = TaggableModel.create(:name => "Bob")
-    lambda {
-      bob.tag_list << "happier"
-      bob.tag_list << "happier"
-      bob.save
-    }.should change(ActsAsTaggableOn::Tagging, :count).by(1)
+  context "Duplicates" do
+    it "should not create duplicate taggings" do
+      bob = TaggableModel.create(:name => "Bob")
+      lambda {
+        bob.tag_list << "happier"
+        bob.tag_list << "happier"
+        bob.save
+      }.should change(ActsAsTaggableOn::Tagging, :count).by(1)
+    end
+
+    if ActsAsTaggableOn::Utils.supports_concurrency?
+      it "should not duplicate tags added on different threads" do
+        thread_count = 4
+        barrier = Barrier.new thread_count
+
+        expect {
+          thread_count.times.map do |idx|
+            Thread.start do
+              connor = TaggableModel.first_or_create(:name => "Connor")
+              connor.tag_list = "There, can, be, only, one"
+              barrier.wait
+              begin
+                connor.save
+              rescue ActsAsTaggableOn::DuplicateTagError => e
+                # second save should succeed
+                connor.save
+              end
+            end
+          end.map(&:join)
+        }.to change(ActsAsTaggableOn::Tag, :count).by(5)
+      end
+    end
   end
 
   describe "Associations" do
@@ -468,7 +530,7 @@ describe "Taggable" do
 
   describe "grouped_column_names_for method" do
     it "should return all column names joined for Tag GROUP clause" do
-      @taggable.grouped_column_names_for(ActsAsTaggableOn::Tag).should == "tags.id, tags.name"
+      @taggable.grouped_column_names_for(ActsAsTaggableOn::Tag).should == "tags.id, tags.name, tags.taggings_count"
     end
 
     it "should return all column names joined for TaggableModel GROUP clause" do
@@ -654,5 +716,3 @@ describe "Taggable" do
     end
   end
 end
-
-

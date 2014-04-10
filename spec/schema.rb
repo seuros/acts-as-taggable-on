@@ -1,7 +1,9 @@
 ActiveRecord::Schema.define :version => 0 do
   create_table :tags, :force => true do |t|
     t.string :name
+    t.integer :taggings_count, :default => 0
   end
+  add_index "tags", ["name"], name: "index_tags_on_name", unique: true
 
   create_table :taggings, :force => true do |t|
     t.references :tag
@@ -17,6 +19,10 @@ ActiveRecord::Schema.define :version => 0 do
 
     t.datetime :created_at
   end
+  add_index "taggings",
+            ["tag_id", "taggable_id", "taggable_type", "context", "tagger_id", "tagger_type"],
+            unique: true, name: "taggings_idx"
+
   # above copied from
   # generators/acts_as_taggable_on/migration/migration_generator
 

@@ -17,6 +17,7 @@ Gem::Specification.new do |gem|
   gem.executables   = gem.files.grep(%r{^bin/}) { |f| File.basename(f) }
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.require_paths = ["lib"]
+  gem.required_ruby_version     = '>= 1.9.3'
 
   if File.exists?('UPGRADING.md')
     gem.post_install_message = File.read('UPGRADING.md')
@@ -33,5 +34,5 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'rspec-rails', '2.13.0' # 2.13.1 is broken
   gem.add_development_dependency 'rspec', '~> 2.6'
   gem.add_development_dependency 'ammeter'
-
+  gem.add_development_dependency 'barrier'
 end
