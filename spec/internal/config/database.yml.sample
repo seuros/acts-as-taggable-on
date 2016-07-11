@@ -2,7 +2,7 @@ sqlite3:
   adapter: sqlite3
   database: ':memory:'
 
-mysql:
+mysql2:
   adapter: mysql2
   host: localhost
   username: root
